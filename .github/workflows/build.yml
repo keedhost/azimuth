@@ -93,15 +93,24 @@ jobs:
           mkdir -p ~/ciq-sdk
           unzip -q /tmp/ciq-sdk.zip -d ~/ciq-sdk
           rm /tmp/ciq-sdk.zip
+          # Перевірити що це SDK (містить monkeyc), а не SDK Manager
+          if ! find ~/ciq-sdk -name monkeyc -type f -quit 2>/dev/null | grep -q .; then
+            echo "::error title=Wrong URL::CIQ_SDK_URL вказує на SDK Manager, а не на сам SDK."
+            echo ""
+            echo "SDK Manager містить лише 'sdkmanager' і не підходить для CI."
+            echo "Потрібен прямий URL Connect IQ SDK для Linux (.zip з monkeyc)."
+            echo ""
+            echo "Як отримати правильний URL:"
+            echo "  1. Відкрийте https://developer.garmin.com/connect-iq/sdk/"
+            echo "  2. У розділі 'Connect IQ SDK' знайдіть 'SDK X.X.X for Linux'"
+            echo "  3. Скопіюйте пряме посилання (формат: connectiq-sdk-lin-X.X.X-DATE-HASH.zip)"
+            echo "  4. Оновіть CIQ_SDK_URL: Settings → Variables → Actions"
+            exit 1
+          fi
 
       - name: Add SDK to PATH
         run: |
           MONKEYC=$(find ~/ciq-sdk -name monkeyc -type f 2>/dev/null | head -1)
-          if [ -z "${MONKEYC}" ]; then
-            echo "::error::monkeyc not found. Extracted contents:"
-            find ~/ciq-sdk -maxdepth 5 | head -40
-            exit 1
-          fi
           echo "monkeyc found at: ${MONKEYC}"
           echo "$(dirname "${MONKEYC}")" >> $GITHUB_PATH
 
@@ -315,6 +324,13 @@ jobs:
           curl -fsSL "${{ vars.CIQ_SDK_URL }}" -o /tmp/ciq-sdk.zip
           mkdir -p ~/ciq-sdk
           unzip -q /tmp/ciq-sdk.zip -d ~/ciq-sdk
+          rm -f /tmp/ciq-sdk.zip
+          if ! find ~/ciq-sdk -name monkeyc -type f -quit 2>/dev/null | grep -q .; then
+            echo "::error title=Wrong URL::CIQ_SDK_URL вказує на SDK Manager, а не на SDK."
+            echo "Потрібен прямий URL: connectiq-sdk-lin-X.X.X-DATE-HASH.zip (містить monkeyc)"
+            echo "Оновіть: Settings → Variables → Actions → CIQ_SDK_URL"
+            exit 1
+          fi
 
       - name: Add SDK to PATH
         run: |
