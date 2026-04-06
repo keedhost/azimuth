@@ -168,27 +168,27 @@ jobs:
           SHORT_SHA="${SHORT_SHA:0:7}"
 
           cat > /tmp/nightly_notes.md << NOTES_EOF
-## Nightly Build
+          ## Nightly Build
 
-| | |
-|---|---|
-| **Гілка** | \`${{ github.ref_name }}\` |
-| **Commit** | [\`${SHORT_SHA}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |
-| **Дата** | ${BUILD_DATE} |
+          | | |
+          |---|---|
+          | **Гілка** | \`${{ github.ref_name }}\` |
+          | **Commit** | [\`${SHORT_SHA}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |
+          | **Дата** | ${BUILD_DATE} |
 
-### Як встановити
-1. Завантажте \`Azimuth.iq\`
-2. Підключіть годинник до ПК
-3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
-   або скопіюйте \`.iq\` до \`GARMIN/APPS/\`
+          ### Як встановити
+          1. Завантажте \`Azimuth.iq\`
+          2. Підключіть годинник до ПК
+          3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
+             або скопіюйте \`.iq\` до \`GARMIN/APPS/\`
 
-### Перевірка цілісності
-\`\`\`
-sha256sum -c SHA256SUMS.txt
-\`\`\`
+          ### Перевірка цілісності
+          \`\`\`
+          sha256sum -c SHA256SUMS.txt
+          \`\`\`
 
-> ⚠️ Нічна збірка може бути нестабільною.
-NOTES_EOF
+          > ⚠️ Нічна збірка може бути нестабільною.
+          NOTES_EOF
 
           gh release create nightly \
             --title "Nightly Build — ${BUILD_DATE}" \
@@ -212,25 +212,25 @@ NOTES_EOF
 
           # Заголовок нотаток з інструкцією встановлення
           cat > /tmp/release_header.md << HEADER_EOF
-### Як встановити
-1. Завантажте \`Azimuth.iq\`
-2. Підключіть годинник до ПК
-3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
+          ### Як встановити
+          1. Завантажте \`Azimuth.iq\`
+          2. Підключіть годинник до ПК
+          3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
 
-### Підтримувані пристрої
-fenix 6/7, Forerunner 245/255/265/945, Epix 2, Instinct 2, Venu 2/3 та інші.
-Повний список — у \`manifest.xml\`.
+          ### Підтримувані пристрої
+          fenix 6/7, Forerunner 245/255/265/945, Epix 2, Instinct 2, Venu 2/3 та інші.
+          Повний список — у \`manifest.xml\`.
 
-### Перевірка цілісності
-\`\`\`
-sha256sum -c SHA256SUMS.txt
-\`\`\`
+          ### Перевірка цілісності
+          \`\`\`
+          sha256sum -c SHA256SUMS.txt
+          \`\`\`
 
-**Зібрано:** ${BUILD_DATE}
+          **Зібрано:** ${BUILD_DATE}
 
----
+          ---
 
-HEADER_EOF
+          HEADER_EOF
 
           # Створити реліз (з auto-changelog якщо є попередній тег)
           if [ -n "${PREV_TAG}" ]; then
