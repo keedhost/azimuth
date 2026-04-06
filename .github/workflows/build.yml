@@ -50,14 +50,35 @@ jobs:
         with:
           fetch-depth: 0          # повна історія для generate-notes
 
-      # ── 2. Java ────────────────────────────────────────────────────────────
+      # ── 2. Перевірка обов'язкових налаштувань ─────────────────────────────
+      - name: Validate required variables
+        run: |
+          ok=true
+          if [ -z "${{ vars.CIQ_SDK_URL }}" ]; then
+            echo "::error title=Missing variable::CIQ_SDK_URL is not set."
+            echo "  Fix: Settings → Variables → Actions → New repository variable"
+            echo "       Name : CIQ_SDK_URL"
+            echo "       Value: full URL to the Garmin Connect IQ SDK for Linux (.zip)"
+            echo "       Download: https://developer.garmin.com/connect-iq/sdk/"
+            ok=false
+          fi
+          if [ -z "${{ secrets.DEVELOPER_KEY_B64 }}" ]; then
+            echo "::error title=Missing secret::DEVELOPER_KEY_B64 is not set."
+            echo "  Fix: Settings → Secrets → Actions → New repository secret"
+            echo "       Name : DEVELOPER_KEY_B64"
+            echo "       Value: base64 -w0 developer_key.der"
+            ok=false
+          fi
+          $ok || exit 1
+
+      # ── 3. Java ────────────────────────────────────────────────────────────
       - name: Set up Java 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      # ── 3. Connect IQ SDK ──────────────────────────────────────────────────
+      # ── 4. Connect IQ SDK ──────────────────────────────────────────────────
       - name: Cache Connect IQ SDK
         id: cache-sdk
         uses: actions/cache@v4
@@ -146,33 +167,32 @@ jobs:
           SHORT_SHA="${{ github.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
 
-          NOTES=$(cat <<EOF
-          ## Nightly Build
+          cat > /tmp/nightly_notes.md << NOTES_EOF
+## Nightly Build
 
-          | | |
-          |---|---|
-          | **Гілка** | \`${{ github.ref_name }}\` |
-          | **Commit** | [\`${SHORT_SHA}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |
-          | **Дата** | ${BUILD_DATE} |
+| | |
+|---|---|
+| **Гілка** | \`${{ github.ref_name }}\` |
+| **Commit** | [\`${SHORT_SHA}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |
+| **Дата** | ${BUILD_DATE} |
 
-          ### Як встановити
-          1. Завантажте \`Azimuth.iq\`
-          2. Підключіть годинник до ПК
-          3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
-             або скопіюйте \`.iq\` до \`GARMIN/APPS/\`
+### Як встановити
+1. Завантажте \`Azimuth.iq\`
+2. Підключіть годинник до ПК
+3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
+   або скопіюйте \`.iq\` до \`GARMIN/APPS/\`
 
-          ### Перевірка цілісності
-          \`\`\`
-          sha256sum -c SHA256SUMS.txt
-          \`\`\`
+### Перевірка цілісності
+\`\`\`
+sha256sum -c SHA256SUMS.txt
+\`\`\`
 
-          > ⚠️ Нічна збірка може бути нестабільною.
-          EOF
-          )
+> ⚠️ Нічна збірка може бути нестабільною.
+NOTES_EOF
 
           gh release create nightly \
             --title "Nightly Build — ${BUILD_DATE}" \
-            --notes "${NOTES}" \
+            --notes-file /tmp/nightly_notes.md \
             --prerelease \
             --target "${{ github.sha }}" \
             Azimuth.iq \
@@ -187,37 +207,52 @@ jobs:
           VERSION="${{ github.ref_name }}"
           BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
 
-          INSTALL_NOTES=$(cat <<EOF
+          # Визначити попередній тег (може бути порожнім для першого релізу)
+          PREV_TAG=$(git tag --sort=-version:refname | grep '^v' | sed -n '2p' || true)
 
-          ---
-          ### Як встановити
-          1. Завантажте \`Azimuth.iq\`
-          2. Підключіть годинник до ПК
-          3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
+          # Заголовок нотаток з інструкцією встановлення
+          cat > /tmp/release_header.md << HEADER_EOF
+### Як встановити
+1. Завантажте \`Azimuth.iq\`
+2. Підключіть годинник до ПК
+3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
 
-          ### Підтримувані пристрої
-          fenix 6/7, Forerunner 245/255/265/945, Epix 2, Instinct 2, Venu 2/3 та інші.
-          Повний список — у \`manifest.xml\`.
+### Підтримувані пристрої
+fenix 6/7, Forerunner 245/255/265/945, Epix 2, Instinct 2, Venu 2/3 та інші.
+Повний список — у \`manifest.xml\`.
 
-          ### Перевірка цілісності
-          \`\`\`
-          sha256sum -c SHA256SUMS.txt
-          \`\`\`
+### Перевірка цілісності
+\`\`\`
+sha256sum -c SHA256SUMS.txt
+\`\`\`
 
-          **Зібрано:** ${BUILD_DATE}
-          EOF
-          )
+**Зібрано:** ${BUILD_DATE}
 
-          gh release create "${VERSION}" \
-            --title "Azimuth ${VERSION}" \
-            --generate-notes \
-            --notes-start-tag "$(git tag --sort=-version:refname | grep '^v' | sed -n '2p')" \
-            Azimuth.iq \
-            SHA256SUMS.txt
+---
 
-          # Дописати інструкцію з встановлення до авто-changelog
-          CURRENT_BODY=$(gh release view "${VERSION}" --json body -q .body)
-          gh release edit "${VERSION}" --notes "${CURRENT_BODY}${INSTALL_NOTES}"
+HEADER_EOF
+
+          # Створити реліз (з auto-changelog якщо є попередній тег)
+          if [ -n "${PREV_TAG}" ]; then
+            gh release create "${VERSION}" \
+              --title "Azimuth ${VERSION}" \
+              --generate-notes \
+              --notes-start-tag "${PREV_TAG}" \
+              Azimuth.iq \
+              SHA256SUMS.txt
+          else
+            gh release create "${VERSION}" \
+              --title "Azimuth ${VERSION}" \
+              --notes-file /tmp/release_header.md \
+              Azimuth.iq \
+              SHA256SUMS.txt
+          fi
+
+          # Якщо є auto-changelog — додати заголовок з інструкцією перед ним
+          if [ -n "${PREV_TAG}" ]; then
+            gh release view "${VERSION}" --json body -q .body >> /tmp/release_header.md
+            gh release edit "${VERSION}" --notes-file /tmp/release_header.md
+          fi
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -246,6 +281,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate CIQ_SDK_URL
+        run: |
+          if [ -z "${{ vars.CIQ_SDK_URL }}" ]; then
+            echo "::error title=Missing variable::CIQ_SDK_URL is not set. See Settings → Variables → Actions."
+            exit 1
+          fi
 
       - uses: actions/setup-java@v4
         with:
