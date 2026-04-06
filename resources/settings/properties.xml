@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<properties>
+  <!--
+    Індекс останнього вибраного обʼєкта природи.
+    Зберігається між запусками застосунку.
+  -->
+  <property id="targetIndex" type="Number">0</property>
+</properties>

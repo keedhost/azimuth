@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!-- Ukrainian / Українська -->
+<strings>
+  <string id="AppName">Азимут</string>
+
+  <string id="LabelNorthPole">Пн.полюс 0°</string>
+  <string id="LabelObject">Обʼєкт</string>
+
+  <string id="LabelDirAz">Пр.аз:</string>
+  <string id="LabelRevAz">Зв.аз:</string>
+  <string id="LabelYou">Ви:</string>
+  <string id="SuffixThousandKm">тис.км</string>
+  <string id="SuffixKm">км</string>
+
+  <string id="MsgCompass">Компас...</string>
+  <string id="MsgNoGps">Немає сигналу GPS</string>
+  <string id="MsgWeakGps">Слабкий сигнал GPS</string>
+  <string id="MsgWaitGps">Очікування GPS...</string>
+
+  <string id="MenuTitle">Оберіть ціль</string>
+  <string id="MenuAdd">+ Додати точку</string>
+  <string id="MenuDeleteCustom">x Видалити кастомну</string>
+  <string id="MenuGpsReady">GPS є</string>
+  <string id="MenuGpsWait">Очікуйте GPS...</string>
+
+  <string id="MenuAddTitle">Додати точку</string>
+  <string id="MenuFromGps">З поточної позиції</string>
+  <string id="MenuManual">Ввести координати MGRS</string>
+  <string id="MenuManualHint">Вручну (4-digit ~ 10 м)</string>
+
+  <string id="MenuDeleteTitle">Видалити точку</string>
+
+  <string id="MsgGpsError">GPS недоступний. Спробуйте пізніше.</string>
+
+  <string id="AutoPointPrefix">Точка</string>
+
+  <string id="CoordTitle">Введіть MGRS</string>
+  <string id="FieldZone">ЗОНА</string>
+  <string id="FieldBand">ПОЯС</string>
+  <string id="FieldColE">КВ. СХІД</string>
+  <string id="FieldRowN">КВ. ПІВНІЧ</string>
+  <string id="FieldEHi">E (100м)</string>
+  <string id="FieldELo">E (10м)</string>
+  <string id="FieldNHi">N (100м)</string>
+  <string id="FieldNLo">N (10м)</string>
+  <string id="HintNext">SELECT-&gt;наст  BACK&lt;-поверн</string>
+  <string id="HintConfirm">SELECT-&gt;OK    BACK&lt;-поверн</string>
+</strings>

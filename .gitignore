@@ -1,0 +1,22 @@
+# Developer keys — НІКОЛИ не комітити
+developer_key.pem
+developer_key.der
+*.pem
+*.der
+
+# Артефакти збірки
+*.prg
+*.iq
+*.elf
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Connect IQ SDK (якщо встановлений локально в проєкті)
+.ciq-sdk/

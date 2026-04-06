@@ -1,0 +1,452 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CircleCI — Azimuth (Garmin Connect IQ)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Необхідні змінні середовища (Project Settings → Environment Variables):
+#   DEVELOPER_KEY_B64  — DER-ключ у base64:
+#                        base64 -w0 developer_key.der   (Linux)
+#                        base64 developer_key.der        (macOS)
+#   CIQ_SDK_URL        — повний URL Linux-SDK, напр.:
+#     https://developer.garmin.com/downloads/connect-iq/sdks/connectiq-sdk-lin-7.4.3-2024-10-03-ab1234.zip
+#   GH_TOKEN           — GitHub Personal Access Token (scopes: repo→contents:write)
+#   GH_REPO            — репозиторій у форматі "owner/repo", напр. "myorg/Azimuth"
+#
+# Публікація артефактів:
+#   PR / будь-яка гілка  → CircleCI Artifacts (30 днів, посилання в UI)
+#   push до main/master  → CircleCI Artifacts + GitHub Release "nightly"
+#   тег v*.*.*           → CircleCI Artifacts + GitHub Release (версійний)
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: 2.1
+
+parameters:
+  test-device:
+    type: string
+    default: fenix7
+
+# ── Reusable commands ─────────────────────────────────────────────────────────
+commands:
+
+  install-java:
+    steps:
+      - run:
+          name: Install Java 17
+          command: |
+            if ! command -v java &>/dev/null; then
+              sudo apt-get update -q
+              sudo apt-get install -y openjdk-17-jdk
+            fi
+            java -version
+
+  install-sdk:
+    steps:
+      - restore_cache:
+          keys:
+            - ciq-sdk-v2-{{ checksum "monkey.jungle" }}-{{ .Environment.CIQ_SDK_URL }}
+            - ciq-sdk-v2-{{ checksum "monkey.jungle" }}-
+      - run:
+          name: Install Connect IQ SDK
+          command: |
+            if [ -f ~/ciq-sdk/bin/monkeyc ]; then
+              echo "SDK cached."
+            else
+              curl -fsSL "${CIQ_SDK_URL}" -o /tmp/ciq-sdk.zip
+              mkdir -p ~/ciq-sdk
+              unzip -q /tmp/ciq-sdk.zip -d ~/ciq-sdk
+              rm /tmp/ciq-sdk.zip
+              chmod +x ~/ciq-sdk/bin/*
+            fi
+            echo "export PATH=\"$HOME/ciq-sdk/bin:\$PATH\"" >> "$BASH_ENV"
+      - save_cache:
+          key: ciq-sdk-v2-{{ checksum "monkey.jungle" }}-{{ .Environment.CIQ_SDK_URL }}
+          paths:
+            - ~/ciq-sdk
+      - run:
+          name: Verify SDK
+          command: monkeyc --version
+
+  install-gh-cli:
+    steps:
+      - restore_cache:
+          keys:
+            - gh-cli-v1
+      - run:
+          name: Install gh CLI
+          command: |
+            if command -v gh &>/dev/null; then
+              echo "gh already installed: $(gh --version | head -1)"
+              exit 0
+            fi
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+              | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+            echo "deb [arch=$(dpkg --print-architecture) \
+              signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] \
+              https://cli.github.com/packages stable main" \
+              | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+            sudo apt-get update -q
+            sudo apt-get install -y gh
+            gh --version
+      - save_cache:
+          key: gh-cli-v1
+          paths:
+            - /usr/bin/gh
+            - /usr/share/keyrings/githubcli-archive-keyring.gpg
+
+  restore-key:
+    steps:
+      - run:
+          name: Restore developer key
+          command: |
+            echo "${DEVELOPER_KEY_B64}" | base64 -d > developer_key.der
+            chmod 600 developer_key.der
+
+  remove-key:
+    steps:
+      - run:
+          name: Remove developer key
+          command: rm -f developer_key.der
+          when: always
+
+  generate-checksum:
+    steps:
+      - run:
+          name: Generate SHA256 checksum
+          command: |
+            sha256sum Azimuth.iq > SHA256SUMS.txt
+            if ls Azimuth-*.prg 1>/dev/null 2>&1; then
+              sha256sum Azimuth-*.prg >> SHA256SUMS.txt
+            fi
+            echo "=== SHA256SUMS.txt ==="
+            cat SHA256SUMS.txt
+
+# ── Jobs ──────────────────────────────────────────────────────────────────────
+jobs:
+
+  # ── Smoke build ────────────────────────────────────────────────────────────
+  smoke-build:
+    docker:
+      - image: cimg/base:stable
+    resource_class: medium
+    steps:
+      - checkout
+      - install-java
+      - install-sdk
+      - restore-key
+
+      - run:
+          name: Build PRG (<< pipeline.parameters.test-device >>)
+          command: |
+            monkeyc \
+              -f monkey.jungle \
+              -o "Azimuth-<< pipeline.parameters.test-device >>.prg" \
+              -d "<< pipeline.parameters.test-device >>" \
+              -y developer_key.der \
+              -w
+
+      - remove-key
+
+      - store_artifacts:
+          path: Azimuth-<< pipeline.parameters.test-device >>.prg
+          destination: prg/<< pipeline.parameters.test-device >>
+
+  # ── IQ Package + publish ───────────────────────────────────────────────────
+  build-and-publish:
+    docker:
+      - image: cimg/base:stable
+    resource_class: medium
+    steps:
+      - checkout
+      - install-java
+      - install-sdk
+      - install-gh-cli
+      - restore-key
+
+      - run:
+          name: Build IQ package (all devices)
+          command: |
+            monkeyc \
+              -f monkey.jungle \
+              -o Azimuth.iq \
+              -e \
+              -y developer_key.der \
+              -w
+            ls -lh Azimuth.iq
+
+      - remove-key
+      - generate-checksum
+
+      # Зберегти в CircleCI Artifacts (доступно завжди)
+      - store_artifacts:
+          path: Azimuth.iq
+          destination: release/Azimuth.iq
+      - store_artifacts:
+          path: SHA256SUMS.txt
+          destination: release/SHA256SUMS.txt
+
+      # Передати артефакти наступним jobs
+      - persist_to_workspace:
+          root: .
+          paths:
+            - Azimuth.iq
+            - SHA256SUMS.txt
+
+  # ── Per-device build (матриця) ────────────────────────────────────────────
+  build-device:
+    parameters:
+      device:
+        type: string
+    docker:
+      - image: cimg/base:stable
+    resource_class: small
+    steps:
+      - checkout
+      - install-java
+      - install-sdk
+      - restore-key
+
+      - run:
+          name: Build PRG (<< parameters.device >>)
+          command: |
+            monkeyc \
+              -f monkey.jungle \
+              -o "Azimuth-<< parameters.device >>.prg" \
+              -d "<< parameters.device >>" \
+              -y developer_key.der \
+              -w
+
+      - remove-key
+
+      - store_artifacts:
+          path: Azimuth-<< parameters.device >>.prg
+          destination: prg/<< parameters.device >>
+
+      # Зберегти PRG для publish-job
+      - persist_to_workspace:
+          root: .
+          paths:
+            - Azimuth-<< parameters.device >>.prg
+
+  # ── Publish nightly GitHub Release ────────────────────────────────────────
+  publish-nightly:
+    docker:
+      - image: cimg/base:stable
+    resource_class: small
+    steps:
+      - checkout
+      - install-gh-cli
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: Publish nightly release to GitHub
+          command: |
+            BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+            SHORT_SHA=$(echo "${CIRCLE_SHA1}" | cut -c1-7)
+
+            cat > RELEASE_NOTES.md <<EOF
+            ## Nightly Build
+
+            | | |
+            |---|---|
+            | **Гілка** | \`${CIRCLE_BRANCH}\` |
+            | **Commit** | [\`${SHORT_SHA}\`](https://github.com/${GH_REPO}/commit/${CIRCLE_SHA1}) |
+            | **Дата** | ${BUILD_DATE} |
+            | **CircleCI** | [Build #${CIRCLE_BUILD_NUM}](${CIRCLE_BUILD_URL}) |
+
+            ### Як встановити
+            1. Завантажте \`Azimuth.iq\`
+            2. Підключіть годинник до ПК
+            3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
+               або скопіюйте \`.iq\` до \`GARMIN/APPS/\`
+
+            ### Перевірка цілісності
+            \`\`\`
+            sha256sum -c SHA256SUMS.txt
+            \`\`\`
+
+            > ⚠️ Нічна збірка може бути нестабільною.
+            EOF
+
+            # Видалити попередній nightly
+            gh release delete nightly \
+              --repo "${GH_REPO}" --yes --cleanup-tag 2>/dev/null || true
+
+            # Зібрати список файлів для завантаження
+            FILES="Azimuth.iq SHA256SUMS.txt"
+            if ls Azimuth-*.prg 1>/dev/null 2>&1; then
+              FILES="${FILES} $(ls Azimuth-*.prg | tr '\n' ' ')"
+            fi
+
+            gh release create nightly \
+              --repo "${GH_REPO}" \
+              --title "Nightly Build — ${BUILD_DATE}" \
+              --notes-file RELEASE_NOTES.md \
+              --prerelease \
+              ${FILES}
+
+            echo "Nightly release published."
+            rm -f RELEASE_NOTES.md
+
+  # ── Publish versioned GitHub Release ──────────────────────────────────────
+  publish-release:
+    docker:
+      - image: cimg/base:stable
+    resource_class: small
+    steps:
+      - checkout
+      - install-gh-cli
+      - attach_workspace:
+          at: .
+
+      - run:
+          name: Publish versioned release to GitHub
+          command: |
+            VERSION="${CIRCLE_TAG}"
+            BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+            cat > RELEASE_NOTES.md <<EOF
+            ## Azimuth ${VERSION}
+
+            **Дата збірки:** ${BUILD_DATE}
+            **CircleCI:** [Build #${CIRCLE_BUILD_NUM}](${CIRCLE_BUILD_URL})
+
+            ### Як встановити
+            1. Завантажте \`Azimuth.iq\`
+            2. Підключіть годинник до ПК
+            3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
+
+            ### Підтримувані пристрої
+            fenix 6/7, Forerunner 245/255/265/945, Epix 2, Instinct 2, Venu 2/3 та інші.
+            Повний список — у \`manifest.xml\`.
+
+            ### Перевірка цілісності
+            \`\`\`
+            sha256sum -c SHA256SUMS.txt
+            \`\`\`
+            EOF
+
+            # Зібрати список файлів для завантаження
+            FILES="Azimuth.iq SHA256SUMS.txt"
+            if ls Azimuth-*.prg 1>/dev/null 2>&1; then
+              FILES="${FILES} $(ls Azimuth-*.prg | tr '\n' ' ')"
+            fi
+
+            gh release create "${VERSION}" \
+              --repo "${GH_REPO}" \
+              --title "Azimuth ${VERSION}" \
+              --notes-file RELEASE_NOTES.md \
+              ${FILES}
+
+            echo "Release ${VERSION} published."
+            rm -f RELEASE_NOTES.md
+
+# ── Workflows ─────────────────────────────────────────────────────────────────
+workflows:
+
+  # ── CI: PR та feature-гілки ────────────────────────────────────────────────
+  ci:
+    jobs:
+      - smoke-build:
+          filters:
+            branches:
+              only: /.*/
+            tags:
+              ignore: /.*/
+
+  # ── CD: push до main/master → nightly release ──────────────────────────────
+  nightly:
+    jobs:
+      - smoke-build:
+          filters:
+            branches:
+              only:
+                - main
+                - master
+
+      - build-and-publish:
+          requires:
+            - smoke-build
+          filters:
+            branches:
+              only:
+                - main
+                - master
+
+      # Паралельна матриця після IQ-збірки
+      - build-device:
+          requires:
+            - build-and-publish
+          filters:
+            branches:
+              only:
+                - main
+                - master
+          matrix:
+            parameters:
+              device:
+                - fenix7
+                - fenix7x
+                - fenix7s
+                - fr265
+                - fr265s
+                - epix2
+                - instinct2
+                - venu3
+
+      # Публікація після завершення всієї матриці
+      - publish-nightly:
+          requires:
+            - build-device
+          filters:
+            branches:
+              only:
+                - main
+                - master
+
+  # ── Release: тег v*.*.* → версійний реліз ─────────────────────────────────
+  release:
+    jobs:
+      - smoke-build:
+          filters:
+            tags:
+              only: /^v\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+
+      - build-and-publish:
+          requires:
+            - smoke-build
+          filters:
+            tags:
+              only: /^v\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+
+      - build-device:
+          requires:
+            - build-and-publish
+          filters:
+            tags:
+              only: /^v\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/
+          matrix:
+            parameters:
+              device:
+                - fenix7
+                - fenix7x
+                - fenix7s
+                - fr265
+                - fr265s
+                - epix2
+                - instinct2
+                - venu3
+
+      - publish-release:
+          requires:
+            - build-device
+          filters:
+            tags:
+              only: /^v\d+\.\d+\.\d+$/
+            branches:
+              ignore: /.*/

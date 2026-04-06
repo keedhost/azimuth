@@ -1,0 +1,300 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GitHub Actions — Azimuth (Garmin Connect IQ)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Необхідні секрети (Settings → Secrets → Actions):
+#   DEVELOPER_KEY_B64  — DER-ключ у base64:
+#                        base64 -w0 developer_key.der   (Linux)
+#                        base64 developer_key.der        (macOS)
+#
+# Необхідні змінні (Settings → Variables → Actions):
+#   CIQ_SDK_URL        — повний URL Linux-SDK, напр.:
+#     https://developer.garmin.com/downloads/connect-iq/sdks/connectiq-sdk-lin-7.4.3-2024-10-03-ab1234.zip
+#
+# GITHUB_TOKEN використовується автоматично (built-in) для публікації релізів.
+# Жодних додаткових токенів не потрібно.
+#
+# Публікація артефактів:
+#   PR / feature-гілки → GitHub Actions Artifact (14 днів)
+#   push до main/master → GitHub Release "nightly" (pre-release, оновлюється)
+#   тег v*.*.* → GitHub Release з changelog та SHA256SUMS
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Build & Publish
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    tags:     [ 'v*.*.*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+# Права на запис потрібні для створення/оновлення GitHub Releases
+permissions:
+  contents: write
+
+env:
+  TEST_DEVICE: fenix7
+
+# ── Job: основна збірка та публікація ─────────────────────────────────────────
+jobs:
+  build:
+    name: Build & Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # повна історія для generate-notes
+
+      # ── 2. Java ────────────────────────────────────────────────────────────
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ── 3. Connect IQ SDK ──────────────────────────────────────────────────
+      - name: Cache Connect IQ SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: ~/ciq-sdk
+          key: ciq-sdk-${{ hashFiles('**/monkey.jungle') }}-${{ vars.CIQ_SDK_URL }}
+
+      - name: Download & install Connect IQ SDK
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL "${{ vars.CIQ_SDK_URL }}" -o /tmp/ciq-sdk.zip
+          mkdir -p ~/ciq-sdk
+          unzip -q /tmp/ciq-sdk.zip -d ~/ciq-sdk
+          rm /tmp/ciq-sdk.zip
+
+      - name: Add SDK to PATH
+        run: echo "$HOME/ciq-sdk/bin" >> $GITHUB_PATH
+
+      - name: Verify SDK
+        run: monkeyc --version
+
+      # ── 4. Developer key ───────────────────────────────────────────────────
+      - name: Restore developer key
+        run: |
+          echo "${{ secrets.DEVELOPER_KEY_B64 }}" | base64 -d > developer_key.der
+          chmod 600 developer_key.der
+
+      # ── 5. Smoke build ─────────────────────────────────────────────────────
+      - name: Build PRG (${{ env.TEST_DEVICE }})
+        run: |
+          monkeyc \
+            -f monkey.jungle \
+            -o "Azimuth-${{ env.TEST_DEVICE }}.prg" \
+            -d "${{ env.TEST_DEVICE }}" \
+            -y developer_key.der \
+            -w
+
+      # ── 6. Повна збірка IQ-пакету ──────────────────────────────────────────
+      - name: Build IQ package (all devices)
+        run: |
+          monkeyc \
+            -f monkey.jungle \
+            -o Azimuth.iq \
+            -e \
+            -y developer_key.der \
+            -w
+          ls -lh Azimuth.iq
+
+      # ── 7. Очищення ключа ──────────────────────────────────────────────────
+      - name: Remove developer key
+        if: always()
+        run: rm -f developer_key.der
+
+      # ── 8. Контрольна сума ─────────────────────────────────────────────────
+      - name: Generate SHA256 checksum
+        run: |
+          sha256sum Azimuth.iq > SHA256SUMS.txt
+          echo "=== SHA256SUMS.txt ==="
+          cat SHA256SUMS.txt
+
+      # ── 9a. PR / feature-гілки → Actions Artifact (тимчасово) ─────────────
+      - name: Upload artifact (PR / feature branch)
+        if: >
+          github.event_name == 'pull_request' ||
+          (github.ref != 'refs/heads/main' &&
+           github.ref != 'refs/heads/master' &&
+           !startsWith(github.ref, 'refs/tags/'))
+        uses: actions/upload-artifact@v4
+        with:
+          name: Azimuth-${{ github.sha }}
+          path: |
+            Azimuth.iq
+            SHA256SUMS.txt
+          retention-days: 14
+
+      # ── 9b. main/master → оновити Nightly Release ─────────────────────────
+      - name: Publish nightly release
+        if: >
+          github.event_name == 'push' &&
+          (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+        run: |
+          # Видалити попередній nightly (тег + реліз), ігноруючи помилку якщо відсутній
+          gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
+
+          BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+          SHORT_SHA="${{ github.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+
+          NOTES=$(cat <<EOF
+          ## Nightly Build
+
+          | | |
+          |---|---|
+          | **Гілка** | \`${{ github.ref_name }}\` |
+          | **Commit** | [\`${SHORT_SHA}\`](${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}) |
+          | **Дата** | ${BUILD_DATE} |
+
+          ### Як встановити
+          1. Завантажте \`Azimuth.iq\`
+          2. Підключіть годинник до ПК
+          3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
+             або скопіюйте \`.iq\` до \`GARMIN/APPS/\`
+
+          ### Перевірка цілісності
+          \`\`\`
+          sha256sum -c SHA256SUMS.txt
+          \`\`\`
+
+          > ⚠️ Нічна збірка може бути нестабільною.
+          EOF
+          )
+
+          gh release create nightly \
+            --title "Nightly Build — ${BUILD_DATE}" \
+            --notes "${NOTES}" \
+            --prerelease \
+            --target "${{ github.sha }}" \
+            Azimuth.iq \
+            SHA256SUMS.txt
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ── 9c. Тег v*.*.* → Versioned Release ────────────────────────────────
+      - name: Publish versioned release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="${{ github.ref_name }}"
+          BUILD_DATE=$(date -u '+%Y-%m-%d %H:%M UTC')
+
+          INSTALL_NOTES=$(cat <<EOF
+
+          ---
+          ### Як встановити
+          1. Завантажте \`Azimuth.iq\`
+          2. Підключіть годинник до ПК
+          3. Відкрийте Garmin Express → **Manage Apps** → **Install from File**
+
+          ### Підтримувані пристрої
+          fenix 6/7, Forerunner 245/255/265/945, Epix 2, Instinct 2, Venu 2/3 та інші.
+          Повний список — у \`manifest.xml\`.
+
+          ### Перевірка цілісності
+          \`\`\`
+          sha256sum -c SHA256SUMS.txt
+          \`\`\`
+
+          **Зібрано:** ${BUILD_DATE}
+          EOF
+          )
+
+          gh release create "${VERSION}" \
+            --title "Azimuth ${VERSION}" \
+            --generate-notes \
+            --notes-start-tag "$(git tag --sort=-version:refname | grep '^v' | sed -n '2p')" \
+            Azimuth.iq \
+            SHA256SUMS.txt
+
+          # Дописати інструкцію з встановлення до авто-changelog
+          CURRENT_BODY=$(gh release view "${VERSION}" --json body -q .body)
+          gh release edit "${VERSION}" --notes "${CURRENT_BODY}${INSTALL_NOTES}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── Job: матрична збірка (запускається після основної) ────────────────────
+  build-matrix:
+    name: Build (${{ matrix.device }})
+    runs-on: ubuntu-latest
+    needs: build
+    if: >
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' ||
+       startsWith(github.ref, 'refs/tags/v'))
+
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - fenix7
+          - fenix7x
+          - fenix7s
+          - fr265
+          - fr265s
+          - epix2
+          - instinct2
+          - venu3
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Cache Connect IQ SDK
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: ~/ciq-sdk
+          key: ciq-sdk-${{ hashFiles('**/monkey.jungle') }}-${{ vars.CIQ_SDK_URL }}
+
+      - name: Download & install Connect IQ SDK
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          curl -fsSL "${{ vars.CIQ_SDK_URL }}" -o /tmp/ciq-sdk.zip
+          mkdir -p ~/ciq-sdk
+          unzip -q /tmp/ciq-sdk.zip -d ~/ciq-sdk
+
+      - name: Add SDK to PATH
+        run: echo "$HOME/ciq-sdk/bin" >> $GITHUB_PATH
+
+      - name: Restore developer key
+        run: echo "${{ secrets.DEVELOPER_KEY_B64 }}" | base64 -d > developer_key.der
+
+      - name: Build PRG (${{ matrix.device }})
+        run: |
+          monkeyc \
+            -f monkey.jungle \
+            -o "Azimuth-${{ matrix.device }}.prg" \
+            -d "${{ matrix.device }}" \
+            -y developer_key.der \
+            -w
+
+      - name: Remove developer key
+        if: always()
+        run: rm -f developer_key.der
+
+      # Завантажити PRG до вже існуючого релізу (nightly або тег)
+      - name: Upload PRG to release
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            RELEASE_TAG="${{ github.ref_name }}"
+          else
+            RELEASE_TAG="nightly"
+          fi
+          gh release upload "${RELEASE_TAG}" \
+            "Azimuth-${{ matrix.device }}.prg" \
+            --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

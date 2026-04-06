@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!-- German / Deutsch -->
+<strings>
+  <string id="AppName">Azimut</string>
+
+  <string id="LabelNorthPole">Nordpol 0°</string>
+  <string id="LabelObject">Objekt</string>
+
+  <string id="LabelDirAz">Az.vor:</string>
+  <string id="LabelRevAz">Az.rück:</string>
+  <string id="LabelYou">Sie:</string>
+  <string id="SuffixThousandKm">Tkm</string>
+  <string id="SuffixKm">km</string>
+
+  <string id="MsgCompass">Kompass...</string>
+  <string id="MsgNoGps">Kein GPS-Signal</string>
+  <string id="MsgWeakGps">Schwaches GPS</string>
+  <string id="MsgWaitGps">GPS warten...</string>
+
+  <string id="MenuTitle">Ziel wählen</string>
+  <string id="MenuAdd">+ Punkt hinzuf.</string>
+  <string id="MenuDeleteCustom">x Eigenen löschen</string>
+  <string id="MenuGpsReady">GPS bereit</string>
+  <string id="MenuGpsWait">GPS warten...</string>
+
+  <string id="MenuAddTitle">Punkt hinzufügen</string>
+  <string id="MenuFromGps">Aktuelle Position</string>
+  <string id="MenuManual">MGRS-Koord. eingeben</string>
+  <string id="MenuManualHint">Manuell (4-stlg ~10m)</string>
+
+  <string id="MenuDeleteTitle">Punkt löschen</string>
+
+  <string id="MsgGpsError">GPS nicht verfügbar.</string>
+
+  <string id="AutoPointPrefix">Punkt</string>
+
+  <string id="CoordTitle">MGRS eingeben</string>
+  <string id="FieldZone">ZONE</string>
+  <string id="FieldBand">BAND</string>
+  <string id="FieldColE">FELD OST</string>
+  <string id="FieldRowN">FELD NORD</string>
+  <string id="FieldEHi">O (100m)</string>
+  <string id="FieldELo">O (10m)</string>
+  <string id="FieldNHi">N (100m)</string>
+  <string id="FieldNLo">N (10m)</string>
+  <string id="HintNext">SELECT-&gt;weiter  BACK&lt;-zurück</string>
+  <string id="HintConfirm">SELECT-&gt;OK    BACK&lt;-zurück</string>
+</strings>

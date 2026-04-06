@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<drawables>
+  <!--
+    Іконка запуску застосунку.
+    Замініть launcher_icon.png (70x70 px, PNG) у цій директорії,
+    щоб встановити власну іконку.
+  -->
+  <bitmap id="LauncherIcon" filename="launcher_icon.png"/>
+</drawables>

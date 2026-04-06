@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!-- French / Français -->
+<strings>
+  <string id="AppName">Azimut</string>
+
+  <string id="LabelNorthPole">Pole N 0°</string>
+  <string id="LabelObject">Objet</string>
+
+  <string id="LabelDirAz">Az.dir:</string>
+  <string id="LabelRevAz">Az.inv:</string>
+  <string id="LabelYou">Vous:</string>
+  <string id="SuffixThousandKm">Mkm</string>
+  <string id="SuffixKm">km</string>
+
+  <string id="MsgCompass">Boussole...</string>
+  <string id="MsgNoGps">Pas de signal GPS</string>
+  <string id="MsgWeakGps">Signal GPS faible</string>
+  <string id="MsgWaitGps">Attente GPS...</string>
+
+  <string id="MenuTitle">Choisir cible</string>
+  <string id="MenuAdd">+ Ajouter point</string>
+  <string id="MenuDeleteCustom">x Suppr. perso</string>
+  <string id="MenuGpsReady">GPS pret</string>
+  <string id="MenuGpsWait">Attente GPS...</string>
+
+  <string id="MenuAddTitle">Ajouter point</string>
+  <string id="MenuFromGps">Position actuelle</string>
+  <string id="MenuManual">Entrer coords MGRS</string>
+  <string id="MenuManualHint">Manuel (4 chif. ~10m)</string>
+
+  <string id="MenuDeleteTitle">Supprimer point</string>
+
+  <string id="MsgGpsError">GPS indisponible. Reessayez.</string>
+
+  <string id="AutoPointPrefix">Point</string>
+
+  <string id="CoordTitle">Entrer MGRS</string>
+  <string id="FieldZone">ZONE</string>
+  <string id="FieldBand">BANDE</string>
+  <string id="FieldColE">CARRE E</string>
+  <string id="FieldRowN">CARRE N</string>
+  <string id="FieldEHi">E (100m)</string>
+  <string id="FieldELo">E (10m)</string>
+  <string id="FieldNHi">N (100m)</string>
+  <string id="FieldNLo">N (10m)</string>
+  <string id="HintNext">SELECT-&gt;suiv  BACK&lt;-prec</string>
+  <string id="HintConfirm">SELECT-&gt;OK    BACK&lt;-prec</string>
+</strings>

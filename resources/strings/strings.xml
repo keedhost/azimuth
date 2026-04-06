@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+<!-- Default language: English -->
+<strings>
+  <string id="AppName">Azimuth</string>
+
+  <!-- Legend -->
+  <string id="LabelNorthPole">N.Pole 0°</string>
+  <string id="LabelObject">Object</string>
+
+  <!-- Azimuth panel -->
+  <string id="LabelDirAz">Dir.Az:</string>
+  <string id="LabelRevAz">Rev.Az:</string>
+  <string id="LabelYou">You:</string>
+  <string id="SuffixThousandKm">k.km</string>
+  <string id="SuffixKm">km</string>
+
+  <!-- GPS / Compass status -->
+  <string id="MsgCompass">Compass...</string>
+  <string id="MsgNoGps">No GPS signal</string>
+  <string id="MsgWeakGps">Weak GPS signal</string>
+  <string id="MsgWaitGps">Waiting for GPS...</string>
+
+  <!-- Main menu -->
+  <string id="MenuTitle">Select Target</string>
+  <string id="MenuAdd">+ Add Point</string>
+  <string id="MenuDeleteCustom">x Delete Custom</string>
+  <string id="MenuGpsReady">GPS ready</string>
+  <string id="MenuGpsWait">Waiting GPS...</string>
+
+  <!-- Add-point submenu -->
+  <string id="MenuAddTitle">Add Point</string>
+  <string id="MenuFromGps">From current position</string>
+  <string id="MenuManual">Enter MGRS coords</string>
+  <string id="MenuManualHint">Manual (4-digit ~10m)</string>
+
+  <!-- Delete submenu -->
+  <string id="MenuDeleteTitle">Delete Point</string>
+
+  <!-- Error -->
+  <string id="MsgGpsError">GPS unavailable. Try later.</string>
+
+  <!-- Auto-name prefix ("Point 1", "Point 2", ...) -->
+  <string id="AutoPointPrefix">Point</string>
+
+  <!-- MGRS coordinate input -->
+  <string id="CoordTitle">Enter MGRS</string>
+  <string id="FieldZone">ZONE</string>
+  <string id="FieldBand">BAND</string>
+  <string id="FieldColE">SQ. EAST</string>
+  <string id="FieldRowN">SQ. NORTH</string>
+  <string id="FieldEHi">E (100m)</string>
+  <string id="FieldELo">E (10m)</string>
+  <string id="FieldNHi">N (100m)</string>
+  <string id="FieldNLo">N (10m)</string>
+  <string id="HintNext">SELECT-&gt;next  BACK&lt;-prev</string>
+  <string id="HintConfirm">SELECT-&gt;OK    BACK&lt;-prev</string>
+</strings>

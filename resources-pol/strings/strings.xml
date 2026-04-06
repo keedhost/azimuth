@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!-- Polish / Polski -->
+<strings>
+  <string id="AppName">Azymut</string>
+
+  <string id="LabelNorthPole">Biegun N 0°</string>
+  <string id="LabelObject">Obiekt</string>
+
+  <string id="LabelDirAz">Az.pros:</string>
+  <string id="LabelRevAz">Az.wst:</string>
+  <string id="LabelYou">Ty:</string>
+  <string id="SuffixThousandKm">tys.km</string>
+  <string id="SuffixKm">km</string>
+
+  <string id="MsgCompass">Kompas...</string>
+  <string id="MsgNoGps">Brak sygnalu GPS</string>
+  <string id="MsgWeakGps">Slaby sygnal GPS</string>
+  <string id="MsgWaitGps">Oczekiwanie GPS...</string>
+
+  <string id="MenuTitle">Wybierz cel</string>
+  <string id="MenuAdd">+ Dodaj punkt</string>
+  <string id="MenuDeleteCustom">x Usun wlasny</string>
+  <string id="MenuGpsReady">GPS gotowy</string>
+  <string id="MenuGpsWait">Oczekiwanie GPS...</string>
+
+  <string id="MenuAddTitle">Dodaj punkt</string>
+  <string id="MenuFromGps">Obecna pozycja</string>
+  <string id="MenuManual">Wpisz koord. MGRS</string>
+  <string id="MenuManualHint">Recznie (4-cyfr. ~10m)</string>
+
+  <string id="MenuDeleteTitle">Usun punkt</string>
+
+  <string id="MsgGpsError">GPS niedostepny. Sprobuj pozniej.</string>
+
+  <string id="AutoPointPrefix">Punkt</string>
+
+  <string id="CoordTitle">Wpisz MGRS</string>
+  <string id="FieldZone">STREFA</string>
+  <string id="FieldBand">PAS</string>
+  <string id="FieldColE">KW. WSCHOD</string>
+  <string id="FieldRowN">KW. POLNOC</string>
+  <string id="FieldEHi">E (100m)</string>
+  <string id="FieldELo">E (10m)</string>
+  <string id="FieldNHi">N (100m)</string>
+  <string id="FieldNLo">N (10m)</string>
+  <string id="HintNext">SELECT-&gt;nast  BACK&lt;-poprz</string>
+  <string id="HintConfirm">SELECT-&gt;OK    BACK&lt;-poprz</string>
+</strings>

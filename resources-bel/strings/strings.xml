@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!-- Belarusian / Беларуская -->
+<strings>
+  <string id="AppName">Азімут</string>
+
+  <string id="LabelNorthPole">Пн.полюс 0°</string>
+  <string id="LabelObject">Абʼект</string>
+
+  <string id="LabelDirAz">Пр.аз:</string>
+  <string id="LabelRevAz">Зв.аз:</string>
+  <string id="LabelYou">Вы:</string>
+  <string id="SuffixThousandKm">тыс.км</string>
+  <string id="SuffixKm">км</string>
+
+  <string id="MsgCompass">Компас...</string>
+  <string id="MsgNoGps">Няма сігналу GPS</string>
+  <string id="MsgWeakGps">Слабы сігнал GPS</string>
+  <string id="MsgWaitGps">Чаканне GPS...</string>
+
+  <string id="MenuTitle">Выберыце мэту</string>
+  <string id="MenuAdd">+ Дадаць пункт</string>
+  <string id="MenuDeleteCustom">x Выдаліць уласны</string>
+  <string id="MenuGpsReady">GPS ёсць</string>
+  <string id="MenuGpsWait">Чаканне GPS...</string>
+
+  <string id="MenuAddTitle">Дадаць пункт</string>
+  <string id="MenuFromGps">З бягучай пазіцыі</string>
+  <string id="MenuManual">Увесці каард. MGRS</string>
+  <string id="MenuManualHint">Уручную (4-digit ~ 10 м)</string>
+
+  <string id="MenuDeleteTitle">Выдаліць пункт</string>
+
+  <string id="MsgGpsError">GPS недаступны. Паспрабуйце пазней.</string>
+
+  <string id="AutoPointPrefix">Пункт</string>
+
+  <string id="CoordTitle">Увядзіце MGRS</string>
+  <string id="FieldZone">ЗОНА</string>
+  <string id="FieldBand">ПОЯС</string>
+  <string id="FieldColE">КВ. УСХОД</string>
+  <string id="FieldRowN">КВ. ПОЎНАЧ</string>
+  <string id="FieldEHi">E (100м)</string>
+  <string id="FieldELo">E (10м)</string>
+  <string id="FieldNHi">N (100м)</string>
+  <string id="FieldNLo">N (10м)</string>
+  <string id="HintNext">SELECT-&gt;наст  BACK&lt;-вярн.</string>
+  <string id="HintConfirm">SELECT-&gt;OK    BACK&lt;-вярн.</string>
+</strings>

@@ -1,0 +1,12 @@
+project.manifest = manifest.xml
+
+base.sourcePath = source
+base.resourcePath = resources
+
+# Language-specific resource overrides
+# The SDK picks the matching directory based on the device language setting.
+base.lang.ukr.resourcePath = resources-ukr
+base.lang.fra.resourcePath = resources-fra
+base.lang.deu.resourcePath = resources-deu
+base.lang.pol.resourcePath = resources-pol
+base.lang.bel.resourcePath = resources-bel
