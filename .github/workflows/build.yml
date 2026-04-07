@@ -93,20 +93,77 @@ jobs:
           mkdir -p ~/ciq-sdk
           unzip -q /tmp/ciq-sdk.zip -d ~/ciq-sdk
           rm /tmp/ciq-sdk.zip
-          # Перевірити що це SDK (містить monkeyc), а не SDK Manager
-          if ! find ~/ciq-sdk -name monkeyc -type f -quit 2>/dev/null | grep -q .; then
-            echo "::error title=Wrong URL::CIQ_SDK_URL вказує на SDK Manager, а не на сам SDK."
-            echo ""
-            echo "SDK Manager містить лише 'sdkmanager' і не підходить для CI."
-            echo "Потрібен прямий URL Connect IQ SDK для Linux (.zip з monkeyc)."
-            echo ""
-            echo "Як отримати правильний URL:"
-            echo "  1. Відкрийте https://developer.garmin.com/connect-iq/sdk/"
-            echo "  2. У розділі 'Connect IQ SDK' знайдіть 'SDK X.X.X for Linux'"
-            echo "  3. Скопіюйте пряме посилання (формат: connectiq-sdk-lin-X.X.X-DATE-HASH.zip)"
-            echo "  4. Оновіть CIQ_SDK_URL: Settings → Variables → Actions"
-            exit 1
+
+          # ── Стратегія 1: прямий SDK ──────────────────────────────────────
+          if find ~/ciq-sdk -name monkeyc -type f -quit 2>/dev/null | grep -q .; then
+            echo "Direct SDK detected."
+            exit 0
           fi
+
+          echo "SDK Manager detected. Trying automated installation..."
+          sudo apt-get install -y xvfb xdotool 2>/dev/null
+
+          # ── Стратегія 2: знайти пряме посилання у jar-файлах ────────────
+          echo "Scanning SDK Manager jars for embedded SDK URL..."
+          SDK_DL_URL=$(find ~/ciq-sdk -name "*.jar" 2>/dev/null \
+            | xargs -I{} strings {} 2>/dev/null \
+            | grep -Eo "https://[^[:space:]'\"]*connectiq[^[:space:]'\"]*\.zip" \
+            | grep -i "lin" \
+            | head -1 || true)
+
+          if [ -n "$SDK_DL_URL" ]; then
+            echo "Found SDK URL in jar: $SDK_DL_URL"
+            curl -fsSL "$SDK_DL_URL" -o /tmp/ciq-actual.zip
+            unzip -q /tmp/ciq-actual.zip -d ~/ciq-sdk
+            rm /tmp/ciq-actual.zip
+            if find ~/ciq-sdk -name monkeyc -type f -quit 2>/dev/null | grep -q .; then
+              echo "SDK installed via URL from SDK Manager jar."
+              exit 0
+            fi
+          fi
+
+          # ── Стратегія 3: Xvfb + GUI automation ──────────────────────────
+          echo "Starting SDK Manager with virtual display..."
+          Xvfb :99 -screen 0 1280x1024x24 -ac &
+          XVFB_PID=$!
+          sleep 3
+          export DISPLAY=:99
+
+          ~/ciq-sdk/bin/sdkmanager &
+          SDK_PID=$!
+
+          echo "Waiting up to 4 min for SDK download..."
+          for i in $(seq 1 120); do
+            if find ~/.Garmin -name monkeyc -type f 2>/dev/null | grep -q .; then
+              echo "SDK appeared after $((i*2))s"
+              break
+            fi
+            # Кожні 20с: Enter+Space у активне вікно (прийняти dialog якщо є)
+            if [ $((i % 10)) -eq 0 ]; then
+              WIN=$(xdotool getactivewindow 2>/dev/null || true)
+              [ -n "$WIN" ] && xdotool key --window "$WIN" Return space 2>/dev/null || true
+            fi
+            sleep 2
+          done
+
+          kill $SDK_PID 2>/dev/null || true
+          kill $XVFB_PID 2>/dev/null || true
+
+          MONKEYC=$(find ~/.Garmin -name monkeyc -type f 2>/dev/null | head -1)
+          if [ -n "$MONKEYC" ]; then
+            SDK_ROOT=$(dirname "$(dirname "$MONKEYC")")
+            cp -r "${SDK_ROOT}/." ~/ciq-sdk/
+            echo "SDK installed from: $SDK_ROOT"
+            exit 0
+          fi
+
+          echo "::error::Усі стратегії не спрацювали."
+          echo "SDK Manager потребує ручної взаємодії — не підтримує headless-режим."
+          echo ""
+          echo "Рішення: на macOS знайдіть вже встановлений SDK:"
+          echo "  find ~/Library/Application\ Support/Garmin/ConnectIQ/Sdks -name monkeyc"
+          echo "  Стисніть SDK-папку, завантажте в GitHub Releases і оновіть CIQ_SDK_URL."
+          exit 1
 
       - name: Add SDK to PATH
         run: |
@@ -324,22 +381,64 @@ jobs:
           curl -fsSL "${{ vars.CIQ_SDK_URL }}" -o /tmp/ciq-sdk.zip
           mkdir -p ~/ciq-sdk
           unzip -q /tmp/ciq-sdk.zip -d ~/ciq-sdk
-          rm -f /tmp/ciq-sdk.zip
-          if ! find ~/ciq-sdk -name monkeyc -type f -quit 2>/dev/null | grep -q .; then
-            echo "::error title=Wrong URL::CIQ_SDK_URL вказує на SDK Manager, а не на SDK."
-            echo "Потрібен прямий URL: connectiq-sdk-lin-X.X.X-DATE-HASH.zip (містить monkeyc)"
-            echo "Оновіть: Settings → Variables → Actions → CIQ_SDK_URL"
-            exit 1
+          rm /tmp/ciq-sdk.zip
+
+          # ── Стратегія 1: прямий SDK ──────────────────────────────────────
+          if find ~/ciq-sdk -name monkeyc -type f -quit 2>/dev/null | grep -q .; then
+            echo "Direct SDK detected."
+            exit 0
           fi
+
+          echo "SDK Manager detected. Trying automated installation..."
+          sudo apt-get install -y xvfb xdotool 2>/dev/null
+
+          # ── Стратегія 2: знайти пряме посилання у jar-файлах ────────────
+          SDK_DL_URL=$(find ~/ciq-sdk -name "*.jar" 2>/dev/null \
+            | xargs -I{} strings {} 2>/dev/null \
+            | grep -Eo "https://[^[:space:]'\"]*connectiq[^[:space:]'\"]*\.zip" \
+            | grep -i "lin" \
+            | head -1 || true)
+
+          if [ -n "$SDK_DL_URL" ]; then
+            echo "Found SDK URL: $SDK_DL_URL"
+            curl -fsSL "$SDK_DL_URL" -o /tmp/ciq-actual.zip
+            unzip -q /tmp/ciq-actual.zip -d ~/ciq-sdk
+            rm /tmp/ciq-actual.zip
+            find ~/ciq-sdk -name monkeyc -type f -quit 2>/dev/null | grep -q . && exit 0
+          fi
+
+          # ── Стратегія 3: Xvfb + GUI automation ──────────────────────────
+          Xvfb :99 -screen 0 1280x1024x24 -ac &
+          XVFB_PID=$!
+          sleep 3
+          export DISPLAY=:99
+          ~/ciq-sdk/bin/sdkmanager &
+          SDK_PID=$!
+
+          for i in $(seq 1 120); do
+            find ~/.Garmin -name monkeyc -type f 2>/dev/null | grep -q . && break
+            [ $((i % 10)) -eq 0 ] && {
+              WIN=$(xdotool getactivewindow 2>/dev/null || true)
+              [ -n "$WIN" ] && xdotool key --window "$WIN" Return space 2>/dev/null || true
+            }
+            sleep 2
+          done
+
+          kill $SDK_PID 2>/dev/null || true
+          kill $XVFB_PID 2>/dev/null || true
+
+          MONKEYC=$(find ~/.Garmin -name monkeyc -type f 2>/dev/null | head -1)
+          if [ -n "$MONKEYC" ]; then
+            cp -r "$(dirname "$(dirname "$MONKEYC")")/." ~/ciq-sdk/
+            exit 0
+          fi
+
+          echo "::error::SDK installation failed. See 'Build & Publish' job for details."
+          exit 1
 
       - name: Add SDK to PATH
         run: |
           MONKEYC=$(find ~/ciq-sdk -name monkeyc -type f 2>/dev/null | head -1)
-          if [ -z "${MONKEYC}" ]; then
-            echo "::error::monkeyc not found. Extracted contents:"
-            find ~/ciq-sdk -maxdepth 5 | head -40
-            exit 1
-          fi
           echo "monkeyc found at: ${MONKEYC}"
           echo "$(dirname "${MONKEYC}")" >> $GITHUB_PATH
 
